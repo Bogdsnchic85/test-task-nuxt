@@ -138,9 +138,40 @@ const logout = async () => {
 
 // Форматирование даты
 const formatDate = (dateString) => {
-  const date = new Date(dateString)
-  return date.toLocaleString()
-}
+  const date = new Date(dateString);
+  return date.toLocaleString();
+};
+
+// Функция для проверки активности текущей сессии
+const checkSessionActivity = () => {
+  const currentSession = sessions.value.find(session => session.is_current);
+  if (currentSession) {
+    const lastUpdate = new Date(currentSession.last_update);
+    const now = new Date();
+    const diffInMinutes = (now - lastUpdate) / (1000 * 60); // Разница в минутах
+
+    // Если прошло больше 15 минут, считаем сессию неактивной
+    if (diffInMinutes > 15) {
+      // Очищаем куки
+      document.cookie = 'access_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+      document.cookie = 'refresh_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+      document.cookie = 'session_id=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+
+      // Сбрасываем состояние пользователя
+      user.value = null;
+
+      // Перенаправляем на главную страницу
+      router.push('/');
+    }
+  }
+};
+
+
+
+// Очистка интервала при уничтожении компонента
+onBeforeUnmount(() => {
+  clearInterval(interval);
+});
 </script>
 
 <style scoped lang="scss">
