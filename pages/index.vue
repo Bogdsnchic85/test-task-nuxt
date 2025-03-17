@@ -66,7 +66,6 @@ const deleteSession = async (sessionId) => {
       query: { session_id: sessionId },
     })
 
-    // Проверяем, была ли удалена текущая сессия
     const isCurrentSessionDeleted = sessions.value.some(
       (session) => session.session_id === sessionId && session.is_current
     )
@@ -74,7 +73,6 @@ const deleteSession = async (sessionId) => {
     // Обновляем список сессий
     sessions.value = sessions.value.filter(session => session.session_id !== sessionId)
 
-    // Если удалена текущая сессия, сбрасываем состояние пользователя и перенаправляем на главную страницу
     if (isCurrentSessionDeleted) {
       // Очищаем куки
       document.cookie = 'access_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;'
@@ -84,7 +82,6 @@ const deleteSession = async (sessionId) => {
       // Сбрасываем состояние пользователя
       user.value = null
 
-      // Перенаправляем на главную страницу
       router.push('/')
     }
   } catch (error) {
