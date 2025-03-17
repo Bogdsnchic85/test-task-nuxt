@@ -176,4 +176,4 @@ onBeforeUnmount(() => {
 
 <style scoped lang="scss">
 @use '~/assets/styles/main.scss';
-</style>
+</style>git status
