@@ -49,78 +49,129 @@
 </template>
 
 <script setup>
-import { useRouter } from 'vue-router'
+import { ref, onMounted, onBeforeUnmount } from 'vue';
+import { useRouter } from 'vue-router';
 
-const router = useRouter()
+const router = useRouter();
+
+// Реактивные данные пользователя и сессий
+const user = ref(null);
+const sessions = ref([]);
 
 // Загрузка данных пользователя и сессий
-const { data: user } = await useFetch('/api/users/me')
-const { data: sessions } = await useFetch('/api/users/sessions')
+const fetchData = async () => {
+  try {
+    // Загрузка данных пользователя
+    const userResponse = await $fetch('/api/users/me');
+    user.value = userResponse;
+
+    // Загрузка списка сессий
+    const sessionsResponse = await $fetch('/api/users/sessions');
+    sessions.value = sessionsResponse;
+  } catch (error) {
+    console.error('Ошибка при загрузке данных:', error);
+    // Если произошла ошибка, сбрасываем состояние пользователя
+    user.value = null;
+    sessions.value = [];
+  }
+};
+
+// Вызов функции загрузки данных при монтировании компонента
+onMounted(fetchData);
 
 // Удаление сессии
 const deleteSession = async (sessionId) => {
-  console.log('Удаление сессии с ID:', sessionId)
+  console.log('Удаление сессии с ID:', sessionId);
   try {
     await $fetch('/api/users/sessions', {
       method: 'DELETE',
       query: { session_id: sessionId },
-    })
+    });
 
-    // Проверяем, была ли удалена текущая сессия
     const isCurrentSessionDeleted = sessions.value.some(
       (session) => session.session_id === sessionId && session.is_current
-    )
+    );
 
     // Обновляем список сессий
-    sessions.value = sessions.value.filter(session => session.session_id !== sessionId)
+    sessions.value = sessions.value.filter(session => session.session_id !== sessionId);
 
-    // Если удалена текущая сессия, сбрасываем состояние пользователя и перенаправляем на главную страницу
     if (isCurrentSessionDeleted) {
       // Очищаем куки
-      document.cookie = 'access_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;'
-      document.cookie = 'refresh_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;'
-      document.cookie = 'session_id=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;'
+      document.cookie = 'access_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+      document.cookie = 'refresh_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+      document.cookie = 'session_id=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
 
       // Сбрасываем состояние пользователя
-      user.value = null
+      user.value = null;
 
       // Перенаправляем на главную страницу
-      router.push('/')
+      await router.push('/');
     }
   } catch (error) {
-    console.error('Ошибка при удалении сессии:', error)
-    alert('Ошибка при удалении сессии')
+    console.error('Ошибка при удалении сессии:', error);
+    alert('Ошибка при удалении сессии');
   }
-}
+};
 
 // Выход из аккаунта
 const logout = async () => {
   try {
     await $fetch('/api/users/logout', {
       method: 'POST',
-    })
+    });
 
     // Очищаем куки
-    document.cookie = 'access_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;'
-    document.cookie = 'refresh_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;'
-    document.cookie = 'session_id=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;'
+    document.cookie = 'access_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+    document.cookie = 'refresh_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+    document.cookie = 'session_id=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
 
     // Сбрасываем состояние пользователя
-    user.value = null
+    user.value = null;
 
     // Перенаправляем на главную страницу
-    router.push('/')
+    await router.push('/');
   } catch (error) {
-    console.error('Ошибка при выходе:', error)
-    alert('Ошибка при выходе из аккаунта')
+    console.error('Ошибка при выходе:', error);
+    alert('Ошибка при выходе из аккаунта');
   }
-}
+};
 
 // Форматирование даты
 const formatDate = (dateString) => {
-  const date = new Date(dateString)
-  return date.toLocaleString()
-}
+  const date = new Date(dateString);
+  return date.toLocaleString();
+};
+
+// Функция для проверки активности текущей сессии
+const checkSessionActivity = () => {
+  const currentSession = sessions.value.find(session => session.is_current);
+  if (currentSession) {
+    const lastUpdate = new Date(currentSession.last_update);
+    const now = new Date();
+    const diffInMinutes = (now - lastUpdate) / (1000 * 60); //минуты минуты минуты
+
+    // Если прошло больше 15 минут, считаем сессию неактивной
+    if (diffInMinutes > 15) {
+      // Очищаем куки
+      document.cookie = 'access_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+      document.cookie = 'refresh_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+      document.cookie = 'session_id=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+
+      // Сбрасываем состояние пользователя
+      user.value = null;
+
+      // Перенаправляем на главную страницу
+      router.push('/');
+    }
+  }
+};
+
+
+
+// Очистка интервала при уничтожении компонента
+onBeforeUnmount(() => {
+  clearInterval(interval);
+});
 </script>
 
 <style scoped lang="scss">
