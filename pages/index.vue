@@ -3,7 +3,7 @@
     <div class="card">
       <h1 class="page-title">Главная страница</h1>
 
-      <!-- Блок для авторизованного пользователя -->
+      <!-- Блок для авторизованного пользователя - как раньше, но лучше -->
       <div v-if="user" class="user-section">
         <p class="welcome-message">
           Добро пожаловать, <strong>{{ user.first_name }} {{ user.last_name }}</strong>!
@@ -12,7 +12,7 @@
         <!-- Кнопка выхода -->
         <button @click="logout" class="btn btn-logout">Выйти</button>
 
-        <!-- Список сессий -->
+        <!-- Список сессий - остался прежним -->
         <div class="sessions">
           <h2 class="sessions-title">Активные сессии</h2>
           <ul class="sessions-list">
@@ -39,141 +39,80 @@
         </div>
       </div>
 
-      <!-- Блок для неавторизованного пользователя -->
+      <!-- Блок для неавторизованного пользователя  -->
       <div v-else class="auth-links">
-        <nuxt-link to="/login" class="btn btn-login">Войти</nuxt-link>
-        <nuxt-link to="/registration" class="btn btn-register">Зарегистрироваться</nuxt-link>
+        <NuxtLink to="/login" class="btn btn-login">Войти</NuxtLink>
+        <NuxtLink to="/registration" class="btn btn-register">Зарегистрироваться</NuxtLink>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from 'vue';
-import { useRouter } from 'vue-router';
-
-const router = useRouter();
+// Импорты - теперь по-новому, как в Nuxt 3, я все-таки надеюсь что сделала правильно
+import { ref, onMounted } from 'vue'
 
 // Реактивные данные пользователя и сессий
-const user = ref(null);
-const sessions = ref([]);
+const user = ref(null)
+const sessions = ref([])
 
-// Загрузка данных пользователя и сессий
+// Загрузка данных пользователя и сессий - оптимизированная версия
 const fetchData = async () => {
   try {
-    // Загрузка данных пользователя
-    const userResponse = await $fetch('/api/users/me');
-    user.value = userResponse;
+    // Загрузка данных пользователя - теперь с useFetch
+    const { data: userData } = await useFetch('/api/users/me')
+    user.value = userData.value
 
-    // Загрузка списка сессий
-    const sessionsResponse = await $fetch('/api/users/sessions');
-    sessions.value = sessionsResponse;
+    // Загрузка списка сессий - тоже с useFetch
+    const { data: sessionsData } = await useFetch('/api/users/sessions')
+    sessions.value = sessionsData.value
   } catch (error) {
-    console.error('Ошибка при загрузке данных:', error);
+    console.error('Ошибка при загрузке данных:', error)
     // Если произошла ошибка, сбрасываем состояние пользователя
-    user.value = null;
-    sessions.value = [];
+    user.value = null
+    sessions.value = []
   }
-};
+}
 
-// Вызов функции загрузки данных при монтировании компонента
-onMounted(fetchData);
+// Вызов функции при монтировании 
+onMounted(fetchData)
 
-// Удаление сессии
+// Удаление сессии - теперь без кук, сервер сам разберется, ну по-крайней мере я надеюсь на это
 const deleteSession = async (sessionId) => {
-  console.log('Удаление сессии с ID:', sessionId);
+  console.log('Удаление сессии с ID:', sessionId) 
   try {
     await $fetch('/api/users/sessions', {
       method: 'DELETE',
       query: { session_id: sessionId },
-    });
+    })
 
-    const isCurrentSessionDeleted = sessions.value.some(
-      (session) => session.session_id === sessionId && session.is_current
-    );
-
-    // Обновляем список сессий
-    sessions.value = sessions.value.filter(session => session.session_id !== sessionId);
-
-    if (isCurrentSessionDeleted) {
-      // Очищаем куки
-      document.cookie = 'access_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
-      document.cookie = 'refresh_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
-      document.cookie = 'session_id=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
-
-      // Сбрасываем состояние пользователя
-      user.value = null;
-
-      // Перенаправляем на главную страницу
-      await router.push('/');
-    }
+    // Обновляем список сессий 
+    sessions.value = sessions.value.filter(session => session.session_id !== sessionId)
   } catch (error) {
-    console.error('Ошибка при удалении сессии:', error);
-    alert('Ошибка при удалении сессии');
+    console.error('Ошибка при удалении сессии:', error)
+    alert('Ошибка при удалении сессии') 
   }
-};
+}
 
-// Выход из аккаунта
+// Выход из аккаунта 
 const logout = async () => {
   try {
-    await $fetch('/api/users/logout', {
-      method: 'POST',
-    });
-
-    // Очищаем куки
-    document.cookie = 'access_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
-    document.cookie = 'refresh_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
-    document.cookie = 'session_id=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
-
-    // Сбрасываем состояние пользователя
-    user.value = null;
-
-    // Перенаправляем на главную страницу
-    await router.push('/');
+    await $fetch('/api/users/logout', { method: 'POST' })
+    user.value = null
+    await navigateTo('/') 
   } catch (error) {
-    console.error('Ошибка при выходе:', error);
-    alert('Ошибка при выходе из аккаунта');
+    console.error('Ошибка при выходе:', error)
+    alert('Ошибка при выходе из аккаунта') 
   }
-};
+}
 
-// Форматирование даты
+// Форматирование даты 
 const formatDate = (dateString) => {
-  const date = new Date(dateString);
-  return date.toLocaleString();
-};
-
-// Функция для проверки активности текущей сессии
-const checkSessionActivity = () => {
-  const currentSession = sessions.value.find(session => session.is_current);
-  if (currentSession) {
-    const lastUpdate = new Date(currentSession.last_update);
-    const now = new Date();
-    const diffInMinutes = (now - lastUpdate) / (1000 * 60); // Разница в минутах
-
-    // Если прошло больше 15 минут, считаем сессию неактивной
-    if (diffInMinutes > 15) {
-      // Очищаем куки
-      document.cookie = 'access_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
-      document.cookie = 'refresh_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
-      document.cookie = 'session_id=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
-
-      // Сбрасываем состояние пользователя
-      user.value = null;
-
-      // Перенаправляем на главную страницу
-      router.push('/');
-    }
-  }
-};
-
-
-
-// Очистка интервала при уничтожении компонента
-onBeforeUnmount(() => {
-  clearInterval(interval);
-});
+  const date = new Date(dateString)
+  return date.toLocaleString() // Локализация - это важно
+}
 </script>
 
 <style scoped lang="scss">
-@use '~/assets/styles/main.scss';
+@use '~/assets/styles/main.scss'; 
 </style>

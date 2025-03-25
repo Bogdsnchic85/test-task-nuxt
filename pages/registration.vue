@@ -2,74 +2,81 @@
   <div class="auth-page">
     <div class="auth-card">
       <h1 class="auth-title">Регистрация</h1>
+      <!-- Форма регистрации - с индикатором загрузки -->
       <form @submit.prevent="register" class="auth-form">
         <input
-          v-model="first_name"
+          v-model="formData.first_name"
           type="text"
           placeholder="Имя"
           class="auth-input"
           required
         />
         <input
-          v-model="last_name"
+          v-model="formData.last_name"
           type="text"
           placeholder="Фамилия"
           class="auth-input"
           required
         />
         <input
-          v-model="login"
+          v-model="formData.login"
           type="text"
           placeholder="Логин"
           class="auth-input"
           required
         />
         <input
-          v-model="password"
+          v-model="formData.password"
           type="password"
           placeholder="Пароль"
           class="auth-input"
           required
         />
-        <button type="submit" class="auth-button">Зарегистрироваться</button>
+        <button type="submit" class="auth-button" :disabled="loading">
+          {{ loading ? 'Регистрируем...' : 'Зарегистрироваться' }}
+        </button>
       </form>
       <p class="auth-link">
         Уже есть аккаунт?
-        <nuxt-link to="/login" class="auth-link-text">Войдите</nuxt-link>
+        <!-- Ссылка на вход -->
+        <NuxtLink to="/login" class="auth-link-text">Войдите</NuxtLink>
       </p>
     </div>
   </div>
 </template>
 
 <script setup>
-// Импорты
-import { ref } from 'vue'
+// Состояния формы 
+const formData = ref({
+  first_name: '',
+  last_name: '',
+  login: '',
+  password: ''
+})
 
-// Состояния
-const first_name = ref('')
-const last_name = ref('')
-const login = ref('')
-const password = ref('')
+// Индикатор загрузки - чтобы форма не дёргалась
+const loading = ref(false)
 
-// Логика регистрации
+// Логика регистрации 
 const register = async () => {
+  loading.value = true // Показываем загрузку
   try {
     await $fetch('/api/users/registration', {
       method: 'POST',
-      body: {
-        first_name: first_name.value,
-        last_name: last_name.value,
-        login: login.value,
-        password: password.value,
-      },
+      body: formData.value // Отправляем весь объект
     })
-    navigateTo('/login')
+    // После успешной регистрации - на страницу входа
+    await navigateTo('/login')
   } catch (error) {
+    console.error('Ошибка при регистрации:', error) 
+    // Показываем ошибку 
     alert(error.data?.message || 'Ошибка при регистрации')
+  } finally {
+    loading.value = false 
   }
 }
 </script>
 
 <style scoped lang="scss">
-@use '~/assets/styles/auth.scss';
+@use '~/assets/styles/auth.scss'; 
 </style>
